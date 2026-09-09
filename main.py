@@ -5,6 +5,10 @@ Runs as a Render Web Service. A background thread checks the
 gge-tracker.com API every 5 minutes for player `peace_disabled_at`.
 If it's empty (still in peace), sends a Discord webhook alert.
 
+To avoid spamming the webhook, it only sends the alert up to
+MAX_ALERTS times in a row. Once peace_disabled_at has a value again,
+the counter resets so a future peace-empty period can alert again.
+
 A tiny Flask endpoint ("/") is exposed just so Render sees an open
 port and considers the service healthy; it also shows the last check
 result.
@@ -27,9 +31,15 @@ DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1416915562621173891/jwqM
 DISCORD_MESSAGE = "hey <@701463248830070805> jay bird gone"
 REQUEST_TIMEOUT = 15
 CHECK_INTERVAL_SECONDS = 5 * 60  # 5 minutes
+MAX_ALERTS = 2  # stop sending after this many alerts in a row
 
 app = Flask(__name__)
-status = {"last_checked": None, "peace_disabled_at": None, "last_error": None}
+status = {
+    "last_checked": None,
+    "peace_disabled_at": None,
+    "last_error": None,
+    "alert_count": 0,
+}
 
 
 def get_player(player_name: str, server: str) -> dict:
@@ -54,8 +64,16 @@ def check_once() -> None:
         print(f"Checked '{PLAYER_NAME}' on {SERVER}: peace_disabled_at={peace_disabled_at!r}")
 
         if not peace_disabled_at:
-            send_discord_alert(DISCORD_WEBHOOK_URL, DISCORD_MESSAGE)
-            print("Discord alert sent (peace_disabled_at is empty).")
+            if status["alert_count"] < MAX_ALERTS:
+                send_discord_alert(DISCORD_WEBHOOK_URL, DISCORD_MESSAGE)
+                status["alert_count"] += 1
+                print(f"Discord alert sent ({status['alert_count']}/{MAX_ALERTS}).")
+            else:
+                print(f"peace_disabled_at still empty, but already alerted {MAX_ALERTS}x — skipping.")
+        else:
+            if status["alert_count"] > 0:
+                print("peace_disabled_at has a value again — resetting alert counter.")
+            status["alert_count"] = 0
     except requests.RequestException as e:
         status["last_error"] = str(e)
         print(f"ERROR: {e}", file=sys.stderr)
