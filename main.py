@@ -21,7 +21,7 @@ from flask import Flask
 
 API_BASE = "https://api.gge-tracker.com/api/v1"
 
-PLAYER_NAME = "mythicaljay"
+PLAYER_NAME = "notnotlemon"
 SERVER = "US1"
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1416915562621173891/jwqMhksUhzp3s4oyqBp44CmsNLL9Uhahkw7z6-Yet7htvJoCFggrkZwKXY4oQhGUxAIF"
 DISCORD_MESSAGE = "hey <@701463248830070805> jay bird gone"
